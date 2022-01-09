@@ -1,12 +1,17 @@
-﻿using StardewModdingAPI;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
+using Object = StardewValley.Object;
 
 namespace LXGaming.Achievements {
 
     public class ModEntry : Mod {
 
         public override void Entry(IModHelper helper) {
+            helper.ConsoleCommands.Add("player_listincompleterecipes", "Lists incomplete recipes\n\nUsage: player_listincompleterecipes", OnListIncompleteRecipes);
             helper.Events.Player.InventoryChanged += OnInventoryChanged;
         }
 
@@ -63,6 +68,56 @@ namespace LXGaming.Achievements {
                     Monitor.Log($"Crafted {item.DisplayName}", LogLevel.Info);
                 }
             }
+        }
+
+        private void OnListIncompleteRecipes(string name, string[] arguments) {
+            if (!Context.IsWorldReady) {
+                Monitor.Log("You need to load a save to use this command.", LogLevel.Error);
+                return;
+            }
+
+            var player = Game1.player;
+
+            var cookingRecipes = GetIncompleteCookingRecipes(player);
+            if (cookingRecipes.Count != 0) {
+                Monitor.Log("Incomplete Cooking Recipes:", LogLevel.Info);
+                foreach (var recipe in cookingRecipes) {
+                    Monitor.Log($"- {recipe}", LogLevel.Info);
+                }
+            } else {
+                Monitor.Log("Incomplete Cooking Recipes: None", LogLevel.Info);
+            }
+
+            var craftingRecipes = GetIncompleteCraftingRecipes(player);
+            if (craftingRecipes.Count != 0) {
+                Monitor.Log("Incomplete Crafting Recipes:", LogLevel.Info);
+                foreach (var recipe in craftingRecipes) {
+                    Monitor.Log($"- {recipe}", LogLevel.Info);
+                }
+            } else {
+                Monitor.Log("Incomplete Crafting Recipes: None", LogLevel.Info);
+            }
+        }
+
+        private ICollection<string> GetIncompleteCookingRecipes(Farmer player) {
+            return Helper.Content.Load<Dictionary<string, string>>("Data/CookingRecipes", ContentSource.GameContent)
+                .Where(pair => {
+                    var (key, value) = pair;
+                    var index = Convert.ToInt32(value.Split('/')[2].Split(' ')[0]);
+                    return !player.cookingRecipes.ContainsKey(key) || !player.recipesCooked.ContainsKey(index);
+                })
+                .Select(pair => pair.Key)
+                .ToList();
+        }
+
+        private ICollection<string> GetIncompleteCraftingRecipes(Farmer player) {
+            return Helper.Content.Load<Dictionary<string, string>>("Data/CraftingRecipes", ContentSource.GameContent)
+                .Where(pair => {
+                    var (key, value) = pair;
+                    return player.craftingRecipes.TryGetValue(key, out var count) && count == 0;
+                })
+                .Select(pair => pair.Key)
+                .ToList();
         }
     }
 }
