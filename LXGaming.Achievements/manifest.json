@@ -1,0 +1,12 @@
+﻿{
+  "Name": "Achievements",
+  "Author": "LX_Gaming",
+  "Version": "1.0.0",
+  "Description": "Completes Cooking, Crafting and Fishing upon receiving the respective items.",
+  "UniqueId": "LXGaming.Achievements",
+  "EntryDll": "LXGaming.Achievements.dll",
+  "MinimumApiVersion": "3.13.0",
+  "UpdateKeys": [
+    "GitHub:LXGaming/Stardew.Achievements"
+  ]
+}
