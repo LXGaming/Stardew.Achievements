@@ -33,12 +33,21 @@ namespace LXGaming.Achievements {
                 }
 
                 if (item.Category == Object.CookingCategory) {
-                    // Ignore already cooked recipes
-                    if (player.recipesCooked.ContainsKey(index)) {
-                        continue;
+                    // Ignore learned and cooked recipes
+                    if (player.cookingRecipes.ContainsKey(item.Name) && player.recipesCooked.ContainsKey(index)) {
+                        return;
                     }
 
-                    player.cookedRecipe(index);
+                    // Learn recipe
+                    if (!player.cookingRecipes.ContainsKey(item.Name)) {
+                        player.cookingRecipes.Add(item.Name, 0);
+                    }
+
+                    // Cook recipe
+                    if (!player.recipesCooked.ContainsKey(index)) {
+                        player.recipesCooked.Add(index, 1);
+                    }
+
                     Game1.stats.checkForCookingAchievements();
                     Monitor.Log($"Cooked {item.DisplayName}", LogLevel.Info);
                 }
