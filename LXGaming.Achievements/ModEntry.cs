@@ -39,6 +39,7 @@ namespace LXGaming.Achievements {
                     }
 
                     player.cookedRecipe(index);
+                    Game1.stats.checkForCookingAchievements();
                     Monitor.Log($"Cooked {item.DisplayName}", LogLevel.Info);
                 }
 
@@ -49,6 +50,7 @@ namespace LXGaming.Achievements {
                     }
 
                     player.craftingRecipes[item.Name] += 1;
+                    Game1.stats.checkForCraftingAchievements();
                     Monitor.Log($"Crafted {item.DisplayName}", LogLevel.Info);
                 }
             }
