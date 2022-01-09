@@ -27,22 +27,12 @@ namespace LXGaming.Achievements {
                     continue;
                 }
 
-                if (item.Category == Object.FishCategory) {
-                    // Ignore already caught fish
-                    if (player.fishCaught.ContainsKey(index)) {
-                        continue;
-                    }
-
+                if (item.Category == Object.FishCategory && !player.fishCaught.ContainsKey(index)) {
                     player.caughtFish(index, 0);
                     Monitor.Log($"Caught {item.DisplayName}", LogLevel.Info);
                 }
 
-                if (item.Category == Object.CookingCategory) {
-                    // Ignore learned and cooked recipes
-                    if (player.cookingRecipes.ContainsKey(item.Name) && player.recipesCooked.ContainsKey(index)) {
-                        continue;
-                    }
-
+                if (item.Category == Object.CookingCategory && !(player.cookingRecipes.ContainsKey(item.Name) && player.recipesCooked.ContainsKey(index))) {
                     // Learn recipe
                     if (!player.cookingRecipes.ContainsKey(item.Name)) {
                         player.cookingRecipes.Add(item.Name, 0);
@@ -57,12 +47,7 @@ namespace LXGaming.Achievements {
                     Monitor.Log($"Cooked {item.DisplayName}", LogLevel.Info);
                 }
 
-                if (GetCraftingRecipes().ContainsKey(item.Name)) {
-                    // Ignore non-existent or already crafted recipes
-                    if (!player.craftingRecipes.TryGetValue(item.Name, out var count) || count != 0) {
-                        continue;
-                    }
-
+                if (GetCraftingRecipes().ContainsKey(item.Name) && player.craftingRecipes.TryGetValue(item.Name, out var count) && count == 0) {
                     player.craftingRecipes[item.Name] += 1;
                     Game1.stats.checkForCraftingAchievements();
                     Monitor.Log($"Crafted {item.DisplayName}", LogLevel.Info);
