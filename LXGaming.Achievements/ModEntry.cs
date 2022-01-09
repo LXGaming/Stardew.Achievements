@@ -42,7 +42,7 @@ namespace LXGaming.Achievements {
                     Monitor.Log($"Cooked {item.DisplayName}", LogLevel.Info);
                 }
 
-                if (item.Category == Object.CraftingCategory || item.Category == Object.BigCraftableCategory) {
+                if (item.Category is Object.CraftingCategory or Object.BigCraftableCategory) {
                     // Ignore non-existent or already crafted recipes
                     if (!player.craftingRecipes.TryGetValue(item.Name, out var count) || count != 0) {
                         continue;
