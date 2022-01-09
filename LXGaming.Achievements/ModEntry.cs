@@ -47,8 +47,13 @@ namespace LXGaming.Achievements {
                     Monitor.Log($"Cooked {item.DisplayName}", LogLevel.Info);
                 }
 
-                if (GetCraftingRecipes().ContainsKey(item.Name) && player.craftingRecipes.TryGetValue(item.Name, out var count) && count == 0) {
-                    player.craftingRecipes[item.Name] += 1;
+                if (GetCraftingRecipes().ContainsKey(item.Name) && (!player.craftingRecipes.TryGetValue(item.Name, out var count) || count == 0)) {
+                    if (!player.craftingRecipes.ContainsKey(item.Name)) {
+                        player.craftingRecipes.Add(item.Name, 1);
+                    } else {
+                        player.craftingRecipes[item.Name] += 1;
+                    }
+
                     Game1.stats.checkForCraftingAchievements();
                     Monitor.Log($"Crafted {item.DisplayName}", LogLevel.Info);
                 }
