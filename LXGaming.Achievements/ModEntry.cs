@@ -40,7 +40,7 @@ namespace LXGaming.Achievements {
                 if (item.Category == Object.CookingCategory) {
                     // Ignore learned and cooked recipes
                     if (player.cookingRecipes.ContainsKey(item.Name) && player.recipesCooked.ContainsKey(index)) {
-                        return;
+                        continue;
                     }
 
                     // Learn recipe
