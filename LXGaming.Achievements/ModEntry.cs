@@ -57,7 +57,7 @@ namespace LXGaming.Achievements {
                     Monitor.Log($"Cooked {item.DisplayName}", LogLevel.Info);
                 }
 
-                if (item.Category is Object.CraftingCategory or Object.BigCraftableCategory) {
+                if (GetCraftingRecipes().ContainsKey(item.Name)) {
                     // Ignore non-existent or already crafted recipes
                     if (!player.craftingRecipes.TryGetValue(item.Name, out var count) || count != 0) {
                         continue;
@@ -100,7 +100,7 @@ namespace LXGaming.Achievements {
         }
 
         private ICollection<string> GetIncompleteCookingRecipes(Farmer player) {
-            return Helper.Content.Load<Dictionary<string, string>>("Data/CookingRecipes", ContentSource.GameContent)
+            return GetCookingRecipes()
                 .Where(pair => {
                     var (key, value) = pair;
                     var index = Convert.ToInt32(value.Split('/')[2].Split(' ')[0]);
@@ -111,13 +111,21 @@ namespace LXGaming.Achievements {
         }
 
         private ICollection<string> GetIncompleteCraftingRecipes(Farmer player) {
-            return Helper.Content.Load<Dictionary<string, string>>("Data/CraftingRecipes", ContentSource.GameContent)
+            return GetCraftingRecipes()
                 .Where(pair => {
                     var (key, value) = pair;
                     return player.craftingRecipes.TryGetValue(key, out var count) && count == 0;
                 })
                 .Select(pair => pair.Key)
                 .ToList();
+        }
+
+        private Dictionary<string, string> GetCookingRecipes() {
+            return Helper.Content.Load<Dictionary<string, string>>("Data/CookingRecipes", ContentSource.GameContent);
+        }
+
+        private Dictionary<string, string> GetCraftingRecipes() {
+            return Helper.Content.Load<Dictionary<string, string>>("Data/CraftingRecipes", ContentSource.GameContent);
         }
     }
 }
