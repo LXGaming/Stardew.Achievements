@@ -134,7 +134,7 @@ namespace LXGaming.Achievements {
             return GetCraftingRecipes()
                 .Where(pair => {
                     var (key, value) = pair;
-                    return player.craftingRecipes.TryGetValue(key, out var count) && count == 0;
+                    return !player.craftingRecipes.TryGetValue(key, out var count) || count == 0;
                 })
                 .Select(pair => pair.Key)
                 .ToList();
