@@ -2,6 +2,9 @@
 
   <PropertyGroup>
     <TargetFramework>net5.0</TargetFramework>
+    <Authors>Alex Thomson</Authors>
+    <Product>Achievements</Product>
+    <Copyright>© Alex Thomson. All rights reserved.</Copyright>
   </PropertyGroup>
 
   <ItemGroup>
