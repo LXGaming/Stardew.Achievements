@@ -1,147 +1,173 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using StardewModdingAPI;
+﻿using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
-using Object = StardewValley.Object;
+using StardewValleyObject = StardewValley.Object;
 
-namespace LXGaming.Achievements {
+namespace LXGaming.Achievements;
 
-    public class ModEntry : Mod {
+public class ModEntry : Mod {
 
-        public override void Entry(IModHelper helper) {
-            helper.ConsoleCommands.Add("player_listincompleterecipes", "Lists incomplete recipes\n\nUsage: player_listincompleterecipes", OnListIncompleteRecipes);
-            helper.Events.Player.InventoryChanged += OnInventoryChanged;
+    public override void Entry(IModHelper helper) {
+        helper.ConsoleCommands.Add("player_listincompleterecipes", "Lists incomplete recipes\n\nUsage: player_listincompleterecipes", OnListIncompleteRecipes);
+        helper.Events.Player.InventoryChanged += OnInventoryChanged;
+    }
+
+    private void OnInventoryChanged(object? sender, InventoryChangedEventArgs args) {
+        var player = args.Player;
+        if (!player.IsLocalPlayer) {
+            return;
         }
 
-        private void OnInventoryChanged(object sender, InventoryChangedEventArgs args) {
-            var player = args.Player;
-            if (!player.IsLocalPlayer) {
-                return;
+        foreach (var item in args.Added) {
+            if (IsCatchable(item) && !player.fishCaught.ContainsKey(item.QualifiedItemId)) {
+                player.caughtFish(item.QualifiedItemId, 0);
+                Monitor.Log($"Caught {item.DisplayName}", LogLevel.Info);
             }
 
-            foreach (var item in args.Added) {
-                var index = item.ParentSheetIndex;
-                if (index == -1) {
+            foreach (var cookingRecipe in GetCookingRecipes(item.QualifiedItemId)) {
+                if (string.IsNullOrEmpty(cookingRecipe)) {
                     continue;
                 }
 
-                if (item.Category == Object.FishCategory && !player.fishCaught.ContainsKey(index)) {
-                    player.caughtFish(index, 0);
-                    Monitor.Log($"Caught {item.DisplayName}", LogLevel.Info);
+                // Learn recipe
+                bool learnt;
+                if (!player.cookingRecipes.ContainsKey(cookingRecipe)) {
+                    player.cookingRecipes.Add(cookingRecipe, 0);
+                    learnt = true;
+                } else {
+                    learnt = false;
                 }
 
-                var cookingRecipe = GetCookingRecipe(index);
-                if (!string.IsNullOrEmpty(cookingRecipe) && !(player.cookingRecipes.ContainsKey(cookingRecipe) && player.recipesCooked.ContainsKey(index))) {
-                    // Learn recipe
-                    if (!player.cookingRecipes.ContainsKey(cookingRecipe)) {
-                        player.cookingRecipes.Add(cookingRecipe, 0);
-                    }
-
-                    // Cook recipe
-                    if (!player.recipesCooked.ContainsKey(index)) {
-                        player.recipesCooked.Add(index, 1);
-                    }
-
-                    Game1.stats.checkForCookingAchievements();
-                    Monitor.Log($"Cooked {item.DisplayName} ({cookingRecipe})", LogLevel.Info);
+                // Cook recipe
+                bool cooked;
+                if (!player.recipesCooked.ContainsKey(cookingRecipe)) {
+                    player.recipesCooked.Add(cookingRecipe, 1);
+                    cooked = true;
+                } else {
+                    cooked = false;
                 }
 
-                var craftingRecipe = GetCraftingRecipe(index);
-                if (!string.IsNullOrEmpty(craftingRecipe) && (!player.craftingRecipes.TryGetValue(craftingRecipe, out var count) || count == 0)) {
-                    if (!player.craftingRecipes.ContainsKey(craftingRecipe)) {
-                        player.craftingRecipes.Add(craftingRecipe, 1);
-                    } else {
+                if (!learnt && !cooked) {
+                    continue;
+                }
+
+                Game1.stats.checkForCookingAchievements();
+                Monitor.Log($"Cooked {item.DisplayName} ({cookingRecipe})", LogLevel.Info);
+            }
+
+            foreach (var craftingRecipe in GetCraftingRecipes(item.QualifiedItemId)) {
+                if (string.IsNullOrEmpty(craftingRecipe)) {
+                    continue;
+                }
+
+                bool crafted;
+                if (player.craftingRecipes.TryGetValue(craftingRecipe, out var count)) {
+                    if (count == 0) {
                         player.craftingRecipes[craftingRecipe] += 1;
+                        crafted = true;
+                    } else {
+                        crafted = false;
                     }
-
-                    Game1.stats.checkForCraftingAchievements();
-                    Monitor.Log($"Crafted {item.DisplayName} ({craftingRecipe})", LogLevel.Info);
+                } else {
+                    player.craftingRecipes.Add(craftingRecipe, 1);
+                    crafted = true;
                 }
+
+                if (!crafted) {
+                    continue;
+                }
+
+                Game1.stats.checkForCraftingAchievements();
+                Monitor.Log($"Crafted {item.DisplayName} ({craftingRecipe})", LogLevel.Info);
             }
         }
+    }
 
-        private void OnListIncompleteRecipes(string name, string[] arguments) {
-            if (!Context.IsWorldReady) {
-                Monitor.Log("You need to load a save to use this command.", LogLevel.Error);
-                return;
+    private void OnListIncompleteRecipes(string name, string[] arguments) {
+        if (!Context.IsWorldReady) {
+            Monitor.Log("You need to load a save to use this command.", LogLevel.Error);
+            return;
+        }
+
+        var player = Game1.player;
+
+        var cookingRecipes = GetIncompleteCookingRecipes(player).ToList();
+        if (cookingRecipes.Count != 0) {
+            Monitor.Log("Incomplete Cooking Recipes:", LogLevel.Info);
+            foreach (var recipe in cookingRecipes) {
+                Monitor.Log($"- {recipe}", LogLevel.Info);
             }
+        } else {
+            Monitor.Log("Incomplete Cooking Recipes: None", LogLevel.Info);
+        }
 
-            var player = Game1.player;
+        var craftingRecipes = GetIncompleteCraftingRecipes(player).ToList();
+        if (craftingRecipes.Count != 0) {
+            Monitor.Log("Incomplete Crafting Recipes:", LogLevel.Info);
+            foreach (var recipe in craftingRecipes) {
+                Monitor.Log($"- {recipe}", LogLevel.Info);
+            }
+        } else {
+            Monitor.Log("Incomplete Crafting Recipes: None", LogLevel.Info);
+        }
+    }
 
-            var cookingRecipes = GetIncompleteCookingRecipes(player);
-            if (cookingRecipes.Count != 0) {
-                Monitor.Log("Incomplete Cooking Recipes:", LogLevel.Info);
-                foreach (var recipe in cookingRecipes) {
-                    Monitor.Log($"- {recipe}", LogLevel.Info);
+    private bool IsCatchable(Item item) {
+        return item.Category == StardewValleyObject.FishCategory
+               || item.QualifiedItemId == "(O)CaveJelly"
+               || item.QualifiedItemId == "(O)RiverJelly"
+               || item.QualifiedItemId == "(O)SeaJelly";
+    }
+
+    private IEnumerable<string> ParseItemIds(string value, bool qualified = false) {
+        var data = value.Split('/');
+        if (data.Length < 3) {
+            yield break;
+        }
+
+        var itemData = data[2].Split(' ');
+        for (var index = 0; index < itemData.Length; index += 2) {
+            var itemId = itemData[index];
+            if (qualified) {
+                var metadata = ItemRegistry.GetMetadata(itemId);
+                if (metadata != null) {
+                    yield return metadata.QualifiedItemId;
                 }
             } else {
-                Monitor.Log("Incomplete Cooking Recipes: None", LogLevel.Info);
-            }
-
-            var craftingRecipes = GetIncompleteCraftingRecipes(player);
-            if (craftingRecipes.Count != 0) {
-                Monitor.Log("Incomplete Crafting Recipes:", LogLevel.Info);
-                foreach (var recipe in craftingRecipes) {
-                    Monitor.Log($"- {recipe}", LogLevel.Info);
-                }
-            } else {
-                Monitor.Log("Incomplete Crafting Recipes: None", LogLevel.Info);
+                yield return itemId;
             }
         }
+    }
 
-        private int ExtractIndex(string value) {
-            return Convert.ToInt32(value.Split('/')[2].Split(' ')[0]);
-        }
+    private IEnumerable<string> GetCookingRecipes(string itemId) {
+        return GetCookingRecipes()
+            .Where(pair => ParseItemIds(pair.Value, true).Contains(itemId))
+            .Select(pair => pair.Key);
+    }
 
-        private string GetCookingRecipe(int index) {
-            return GetCookingRecipes()
-                .Where(pair => {
-                    var (key, value) = pair;
-                    return ExtractIndex(value) == index;
-                })
-                .Select(pair => pair.Key)
-                .SingleOrDefault();
-        }
+    private IEnumerable<string> GetIncompleteCookingRecipes(Farmer player) {
+        return GetCookingRecipes()
+            .Where(pair => !player.cookingRecipes.ContainsKey(pair.Key) || !ParseItemIds(pair.Value).Any(itemId => player.recipesCooked.ContainsKey(itemId)))
+            .Select(pair => pair.Key);
+    }
 
-        private ICollection<string> GetIncompleteCookingRecipes(Farmer player) {
-            return GetCookingRecipes()
-                .Where(pair => {
-                    var (key, value) = pair;
-                    var index = ExtractIndex(value);
-                    return !player.cookingRecipes.ContainsKey(key) || !player.recipesCooked.ContainsKey(index);
-                })
-                .Select(pair => pair.Key)
-                .ToList();
-        }
+    private Dictionary<string, string> GetCookingRecipes() {
+        return Helper.GameContent.Load<Dictionary<string, string>>("Data/CookingRecipes");
+    }
 
-        private Dictionary<string, string> GetCookingRecipes() {
-            return Helper.Content.Load<Dictionary<string, string>>("Data/CookingRecipes", ContentSource.GameContent);
-        }
+    private IEnumerable<string> GetCraftingRecipes(string itemId) {
+        return GetCraftingRecipes()
+            .Where(pair => ParseItemIds(pair.Value, true).Contains(itemId))
+            .Select(pair => pair.Key);
+    }
 
-        private string GetCraftingRecipe(int index) {
-            return GetCraftingRecipes()
-                .Where(pair => {
-                    var (key, value) = pair;
-                    return ExtractIndex(value) == index;
-                })
-                .Select(pair => pair.Key)
-                .SingleOrDefault();
-        }
+    private IEnumerable<string> GetIncompleteCraftingRecipes(Farmer player) {
+        return GetCraftingRecipes()
+            .Select(pair => pair.Key)
+            .Where(key => !player.craftingRecipes.TryGetValue(key, out var count) || count == 0);
+    }
 
-        private ICollection<string> GetIncompleteCraftingRecipes(Farmer player) {
-            return GetCraftingRecipes()
-                .Where(pair => {
-                    var (key, value) = pair;
-                    return !player.craftingRecipes.TryGetValue(key, out var count) || count == 0;
-                })
-                .Select(pair => pair.Key)
-                .ToList();
-        }
-
-        private Dictionary<string, string> GetCraftingRecipes() {
-            return Helper.Content.Load<Dictionary<string, string>>("Data/CraftingRecipes", ContentSource.GameContent);
-        }
+    private Dictionary<string, string> GetCraftingRecipes() {
+        return Helper.GameContent.Load<Dictionary<string, string>>("Data/CraftingRecipes");
     }
 }
